@@ -48,13 +48,28 @@ const mention = new MentionJS({
 });
 ```
 
-## Exemplos
+## 🎯 Exemplos
 
-### HTML Puro
-Veja o exemplo em `/examples/html/url.html`
+O projeto inclui exemplos em HTML e React:
+
+### HTML
+Exemplo completo com dados estáticos e dinâmicos:
+```bash
+# Abra diretamente no navegador
+open examples/html/url.html
+```
 
 ### React
-Veja o exemplo completo em `/examples/react`
+```bash
+# Entre na pasta do exemplo React
+cd examples/react
+
+# Instale as dependências
+npm install
+
+# Inicie o servidor de desenvolvimento
+npm start
+```
 
 ## API
 
@@ -91,42 +106,6 @@ npm install
 npm start
 ```
 
-## Licença
-
-MIT
-
-## 🎯 Exemplos
-
-O projeto inclui exemplos completos em HTML e React na pasta `/examples`:
-
-- `/examples/html/index.html` - Exemplo completo em HTML
-- `/examples/html/basico.html` - Exemplo básico em HTML
-- `/examples/react` - Exemplo em React
-
-Para executar os exemplos:
-
-### HTML
-Abra diretamente os arquivos HTML no navegador:
-```bash
-# Exemplo completo
-open examples/html/index.html
-
-# Exemplo básico
-open examples/html/basico.html
-```
-
-### React
-```bash
-# Entre na pasta do exemplo React
-cd examples/react
-
-# Instale as dependências
-npm install
-
-# Inicie o servidor de desenvolvimento
-npm start
-```
-
 ## 🤝 Contribuindo
 
 1. Faça um fork do projeto
@@ -153,4 +132,8 @@ npm start
 
 ## ⭐ Autor
 
-Bill Barsch (billbarsch@gmail.com) 
+Bill Barsch (billbarsch@gmail.com)
+
+## Licença
+
+MIT 
