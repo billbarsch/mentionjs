@@ -1,18 +1,18 @@
-import babel from '@rollup/plugin-babel';
-import resolve from '@rollup/plugin-node-resolve';
-import commonjs from '@rollup/plugin-commonjs';
-import typescript from '@rollup/plugin-typescript';
-import { terser } from 'rollup-plugin-terser';
+const babel = require('@rollup/plugin-babel');
+const resolve = require('@rollup/plugin-node-resolve');
+const commonjs = require('@rollup/plugin-commonjs');
+const typescript = require('@rollup/plugin-typescript');
+const terser = require('@rollup/plugin-terser');
 
 const packageJson = require('./package.json');
 
-export default [
+module.exports = [
     // UMD build
     {
         input: 'src/mentionjs.js',
         output: [
             {
-                file: packageJson.main,
+                file: 'dist/mentionjs.js',
                 format: 'umd',
                 name: 'MentionJS',
                 sourcemap: true
@@ -39,7 +39,7 @@ export default [
         input: 'src/mentionjs.js',
         output: [
             {
-                file: packageJson.module,
+                file: 'dist/mentionjs.esm.js',
                 format: 'esm',
                 sourcemap: true
             }

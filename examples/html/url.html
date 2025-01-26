@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MentionJS - Exemplo com URL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        #editor {
+            width: 100%;
+            min-height: 100px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 20px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .output {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .output h3 {
+            margin-top: 0;
+            color: #555;
+        }
+
+        pre {
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            overflow-y: auto;
+            white-space: pre-wrap !important;
+            word-break: break-word;
+            word-wrap: break-word;
+            max-height: none;
+            min-height: 50px;
+            margin: 0;
+            font-family: monospace;
+            line-height: 1.5;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>MentionJS - Exemplo com URL</h1>
+    <p>Digite @ para mencionar usuários</p>
+
+    <div id="editor" contenteditable="true"></div>
+
+    <div class="output">
+        <h3>Conteúdo HTML:</h3>
+        <pre id="output-html"></pre>
+
+        <h3>Conteúdo JSON:</h3>
+        <pre id="output-json"></pre>
+
+        <h3>Conteúdo Texto:</h3>
+        <pre id="output-text"></pre>
+    </div>
+
+    <script src="../../src/mentionjs.js"></script>
+    <script>
+        const editor = document.getElementById('editor');
+        const outputHtml = document.getElementById('output-html');
+        const outputJson = document.getElementById('output-json');
+        const outputText = document.getElementById('output-text');
+
+        const mention = new MentionJS({
+            inputElement: editor,
+            data: {
+                usuarios: 'https://jsonplaceholder.typicode.com/users?username_like=',
+                produtos: 'https://jsonplaceholder.typicode.com/products?title_like=',
+                vendas: [
+                    {
+                        id: 1,
+                        label: 'Venda 1'
+                    },
+                    {
+                        id: 2,
+                        label: 'Venda 2'
+                    }
+                ]
+            },
+            types: ['usuarios', 'produtos', 'vendas'],
+            styles: {
+                usuarios: {
+                    background: '#e3f2fd',
+                    color: '#1565c0',
+                    border: '#90caf9'
+                },
+                produtos: {
+                    background: '#fff9c4',
+                    color: '#f57f17',
+                    border: '#ffd54f'
+                },
+                vendas: {
+                    background: '#fff9c4',
+                    color: '#f57f17',
+                    border: '#ffd54f'
+                }
+            }
+        });
+
+        // Script de atualização
+        const updateOutputs = () => {
+            // Atualizar HTML
+            outputHtml.textContent = mention.getHtml();
+
+            // Atualizar JSON
+            outputJson.textContent = JSON.stringify(mention.getJson(), null, 2);
+
+            // Atualizar Texto
+            const texto = mention.getText();
+            outputText.textContent = texto;
+
+            // Força o reflow
+            outputText.style.display = 'none';
+            outputText.offsetHeight;
+            outputText.style.display = 'block';
+        };
+
+        // Eventos para capturar todas as mudanças
+        editor.addEventListener('input', updateOutputs);
+        editor.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                requestAnimationFrame(updateOutputs);
+            }
+        });
+
+        // Atualização inicial
+        updateOutputs();
+    </script>
+</body>
+
+</html>
