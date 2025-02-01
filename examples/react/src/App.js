@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import MentionJS from '@billbarsch/mentionjs';
+import MentionJS from 'mentionjs';
 import './App.css';
 
 function App() {

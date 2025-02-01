@@ -13,29 +13,49 @@ function App() {
             inputElement: editor,
             data: {
                 usuarios: {
+                    label: 'Usuários',
                     data: 'https://jsonplaceholder.typicode.com/users?username_like=',
+                    display: item => `${item.username} (${item.email})`,
                     parseResponse: (data) => data.map(user => ({
+                        type: 'usuario',
                         id: user.id,
-                        label: user.username
+                        username: user.username,
+                        email: user.email
                     }))
                 },
                 produtos: {
+                    label: 'Produtos',
                     data: 'https://dummyjson.com/products/search?q=',
+                    display: item => `${item.title} - ${item.description}`,
                     parseResponse: (data) => {
                         if (!data || !data.products) return [];
                         return data.products.map(product => ({
+                            type: 'produto',
                             id: product.id,
-                            label: product.title
+                            title: product.title,
+                            description: product.description
                         }));
                     }
                 },
-                vendas: [
-                    { id: 1, label: 'Venda #001' },
-                    { id: 2, label: 'Venda #002' },
-                    { id: 3, label: 'Venda #003' }
-                ]
+                vendas: {
+                    label: 'Vendas',
+                    display: item => `${item.label} - R$ ${item.valor} (${item.data})`,
+                    data: [
+                        {
+                            id: 1,
+                            label: 'Venda 1',
+                            valor: 1000,
+                            data: '2024-03-20'
+                        },
+                        {
+                            id: 2,
+                            label: 'Venda 2',
+                            valor: 2000,
+                            data: '2024-03-21'
+                        }
+                    ]
+                }
             },
-            types: ['usuarios', 'produtos', 'vendas'],
             styles: {
                 usuarios: {
                     background: '#e3f2fd',
@@ -48,48 +68,40 @@ function App() {
                     border: '#ffd54f'
                 },
                 vendas: {
-                    background: '#e8f5e9',
-                    color: '#2e7d32',
-                    border: '#a5d6a7'
-                }
-            },
-            fieldMappings: {
-                usuarios: {
-                    id: 'id',
-                    label: ['username', 'name', 'email']
-                },
-                produtos: {
-                    id: 'id',
-                    label: ['title', 'description']
+                    background: '#fff9c4',
+                    color: '#f57f17',
+                    border: '#ffd54f'
                 }
             }
         });
 
-        editor.addEventListener('input', () => {
+        const updateOutputs = () => {
             setHtml(mention.getHtml());
             setJson(mention.getJson());
             setText(mention.getText());
+        };
+
+        editor.addEventListener('input', updateOutputs);
+        editor.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                requestAnimationFrame(updateOutputs);
+            }
         });
 
+        updateOutputs();
+
         return () => {
-            mention.destroy();
+            editor.removeEventListener('input', updateOutputs);
+            editor.removeEventListener('keydown', updateOutputs);
         };
     }, []);
 
     return (
-        <div className="container">
-            <h1>MentionJS - Exemplo React</h1>
+        <div className="App">
+            <h1>MentionJS - Exemplo com URL</h1>
+            <p>Digite @ para mencionar usuários</p>
 
-            <div className="instructions">
-                <p>Digite @ para mencionar:</p>
-                <ul>
-                    <li><strong>@usuarios</strong> - busca usuários via API</li>
-                    <li><strong>@produtos</strong> - busca produtos via API</li>
-                    <li><strong>@vendas</strong> - lista de vendas estática</li>
-                </ul>
-            </div>
-
-            <div id="editor" contentEditable={true} className="editor" />
+            <div id="editor" contentEditable="true"></div>
 
             <div className="output">
                 <h3>Conteúdo HTML:</h3>

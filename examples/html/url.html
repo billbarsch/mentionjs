@@ -88,38 +88,47 @@
                 usuarios: {
                     label: 'Usuários',
                     data: 'https://jsonplaceholder.typicode.com/users?username_like=',
+                    display: item => `${item.username} (${item.email})`,
                     parseResponse: (data) => data.map(user => ({
+                        type: 'usuario',
                         id: user.id,
-                        label: user.username
+                        username: user.username,
+                        email: user.email
                     }))
                 },
                 produtos: {
                     label: 'Produtos',
                     data: 'https://dummyjson.com/products/search?q=',
+                    display: item => `${item.title} - ${item.description}`,
                     parseResponse: (data) => {
                         if (!data || !data.products) return [];
-
                         return data.products.map(product => ({
+                            type: 'produto',
                             id: product.id,
-                            label: product.title
+                            title: product.title,
+                            description: product.description
                         }));
                     }
                 },
                 vendas: {
                     label: 'Vendas',
+                    display: item => `${item.label} - R$ ${item.valor} (${item.data})`,
                     data: [
                         {
                             id: 1,
-                            label: 'Venda 1'
+                            label: 'Venda 1',
+                            valor: 1000,
+                            data: '2024-03-20'
                         },
                         {
                             id: 2,
-                            label: 'Venda 2'
+                            label: 'Venda 2',
+                            valor: 2000,
+                            data: '2024-03-21'
                         }
                     ]
                 }
             },
-            types: ['usuarios', 'produtos', 'vendas'],
             styles: {
                 usuarios: {
                     background: '#e3f2fd',
@@ -135,16 +144,6 @@
                     background: '#fff9c4',
                     color: '#f57f17',
                     border: '#ffd54f'
-                }
-            },
-            fieldMappings: {
-                usuarios: {
-                    id: 'id',
-                    label: ['username', 'name', 'email']
-                },
-                produtos: {
-                    id: 'id',
-                    label: ['title', 'description']
                 }
             }
         });

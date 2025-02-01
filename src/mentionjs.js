@@ -4,6 +4,7 @@ class MentionJS {
         this.data = {};
         this.parseFunctions = {};
         this.typeLabels = {};
+        this.displayFunctions = {};
 
         // Processar dados e configurações
         Object.entries(options.data || {}).forEach(([tipo, config]) => {
@@ -11,28 +12,45 @@ class MentionJS {
                 // Se for string, é uma URL
                 this.data[tipo] = config;
                 this.parseFunctions[tipo] = data => Array.isArray(data) ?
-                    data.map(item => ({ id: item.id, label: item.label })) :
-                    [{ id: data.id, label: data.label }];
+                    data.map(item => ({ ...item, type: tipo })) :
+                    [{ ...item, type: tipo }];
                 this.typeLabels[tipo] = tipo;
+                this.displayFunctions[tipo] = item => item.label || item.username || item.title || 'Sem nome';
             } else if (Array.isArray(config)) {
                 // Se for array, são dados estáticos
                 this.data[tipo] = config;
                 this.parseFunctions[tipo] = data => data.map(item => ({
-                    id: item.id,
-                    label: item.label
+                    ...item,
+                    type: tipo
                 }));
                 this.typeLabels[tipo] = tipo;
+                this.displayFunctions[tipo] = config.display || (item => item.label || 'Sem nome');
             } else {
                 // Se for objeto, contém dados e função de parse
                 this.data[tipo] = config.data;
-                this.parseFunctions[tipo] = config.parseResponse || (data => Array.isArray(data) ?
-                    data.map(item => ({ id: item.id, label: item.label })) :
-                    [{ id: data.id, label: data.label }]);
+                this.displayFunctions[tipo] = config.display || (item =>
+                    item.label || item.username || item.title || item.name || 'Sem nome'
+                );
+
+                // Se os dados são um array, é estático
+                if (Array.isArray(config.data)) {
+                    this.parseFunctions[tipo] = data => data.map(item => ({
+                        ...item,
+                        type: tipo
+                    }));
+                } else {
+                    // Se não, usa o parseResponse para dados da URL
+                    this.parseFunctions[tipo] = data => {
+                        const parsed = config.parseResponse ? config.parseResponse(data) : data;
+                        return Array.isArray(parsed) ?
+                            parsed.map(item => ({ ...item, type: tipo })) :
+                            [{ ...parsed, type: tipo }];
+                    };
+                }
                 this.typeLabels[tipo] = config.label || tipo;
             }
         });
 
-        this.types = options.types || [];
         this.styles = options.styles || {};
 
         // Criar container de autocomplete
@@ -118,7 +136,7 @@ class MentionJS {
     }
 
     generateTypeStyles() {
-        return this.types.map(type => `
+        return Object.keys(this.typeLabels).map(type => `
             .mentionjs-mention-${type.toLowerCase()} {
                 background-color: ${this.styles[type]?.background || '#e3f2fd'};
                 color: ${this.styles[type]?.color || '#1565c0'};
@@ -174,7 +192,7 @@ class MentionJS {
                 this.currentQuery = query;
 
                 if (!this.buscandoRegistro) {
-                    const tiposDisponiveis = Array.isArray(this.types) ? this.types : [];
+                    const tiposDisponiveis = Object.keys(this.data);
                     this.currentOptions = tiposDisponiveis.filter(option => {
                         const label = this.typeLabels[option] || option;
                         return this.removeAcentos(label.toLowerCase())
@@ -274,9 +292,10 @@ class MentionJS {
 
     showAutocompleteRegistros(registros, atIndex) {
         this.autocompleteContainer.innerHTML = '';
-        if (!Array.isArray(registros)) return;
 
-        if (registros.length === 0) {
+        console.log('Registros recebidos:', registros);
+
+        if (!Array.isArray(registros) || registros.length === 0) {
             const item = document.createElement('div');
             item.classList.add('mentionjs-item', 'mentionjs-no-results');
             item.textContent = 'Nenhum resultado encontrado';
@@ -284,33 +303,38 @@ class MentionJS {
             item.style.fontStyle = 'italic';
             item.style.cursor = 'default';
             this.autocompleteContainer.appendChild(item);
-        } else {
-            registros.forEach((registro, index) => {
-                const item = document.createElement('div');
-                item.classList.add('mentionjs-item');
-                if (index === this.selectedIndex) {
-                    item.classList.add('selected');
-                }
-                item.textContent = registro.label || 'Sem nome';
-
-                const handleClick = () => {
-                    this.selectRegistro(registro, atIndex);
-                };
-
-                const handleMouseOver = () => {
-                    const items = this.autocompleteContainer.children;
-                    for (let i = 0; i < items.length; i++) {
-                        items[i].classList.remove('selected');
-                    }
-                    item.classList.add('selected');
-                    this.selectedIndex = index;
-                };
-
-                item.addEventListener('click', handleClick);
-                item.addEventListener('mouseover', handleMouseOver);
-                this.autocompleteContainer.appendChild(item);
-            });
+            this.positionAutocomplete();
+            return;
         }
+
+        registros.forEach((registro, index) => {
+            const item = document.createElement('div');
+            item.classList.add('mentionjs-item');
+            if (index === this.selectedIndex) {
+                item.classList.add('selected');
+            }
+
+            // Usar a função de display configurada para este tipo
+            const displayFunction = this.displayFunctions[this.tipoSelecionado];
+            item.textContent = displayFunction(registro);
+
+            const handleClick = () => {
+                this.selectRegistro(registro, atIndex);
+            };
+
+            const handleMouseOver = () => {
+                const items = this.autocompleteContainer.children;
+                for (let i = 0; i < items.length; i++) {
+                    items[i].classList.remove('selected');
+                }
+                item.classList.add('selected');
+                this.selectedIndex = index;
+            };
+
+            item.addEventListener('click', handleClick);
+            item.addEventListener('mouseover', handleMouseOver);
+            this.autocompleteContainer.appendChild(item);
+        });
 
         this.positionAutocomplete();
     }
@@ -363,7 +387,7 @@ class MentionJS {
             // Se tiver query, filtra os dados ignorando acentos
             if (query) {
                 return dadosNormalizados.filter(item =>
-                    this.removeAcentos(item.label.toLowerCase())
+                    this.removeAcentos(item.label?.toLowerCase() || '')
                         .includes(this.removeAcentos(query.toLowerCase()))
                 );
             }
@@ -399,24 +423,22 @@ class MentionJS {
                     return [];
                 }
 
-                // Verificar se todos os itens têm id e label
-                const dadosValidos = normalizedData.filter(item =>
-                    item && typeof item === 'object' &&
-                    'id' in item && 'label' in item
-                );
-
                 // Armazenar no cache apenas se não for uma busca
                 if (!query) {
-                    this.dataCache[tipo] = dadosValidos;
+                    this.dataCache[tipo] = normalizedData;
                 }
 
-                return dadosValidos;
+                return normalizedData;
+
             } catch (parseError) {
                 console.error('Erro ao processar dados:', parseError);
+                console.error('Dados recebidos:', data);
                 return [];
             }
         } catch (error) {
             console.error('Erro ao buscar dados:', error);
+            console.error('URL:', url);
+            console.error('Query:', query);
             return [];
         }
     }
@@ -464,17 +486,21 @@ class MentionJS {
     }
 
     selectRegistro(registro, atIndex) {
-        const label = registro.label;
         const tipoLabel = this.typeLabels[this.tipoSelecionado];
+        // Usar a função de display para o texto final também
+        const displayFunction = this.displayFunctions[this.tipoSelecionado];
+        const label = displayFunction(registro);
         const textoFinal = `${tipoLabel}:${label}`;
 
         const mention = document.createElement('span');
         mention.classList.add('mentionjs-mention', `mentionjs-mention-${this.tipoSelecionado.toLowerCase()}`);
         mention.textContent = textoFinal;
         mention.contentEditable = false;
-        mention.dataset.id = registro.id;
-        mention.dataset.tipo = this.tipoSelecionado;
-        mention.dataset.label = label;
+
+        // Armazenar todos os dados do registro no elemento
+        Object.entries(registro).forEach(([key, value]) => {
+            mention.dataset[key] = value;
+        });
 
         const selection = window.getSelection();
         const range = selection.getRangeAt(0);
@@ -538,31 +564,30 @@ class MentionJS {
 
     getJson() {
         const mentions = this.inputElement.querySelectorAll('.mentionjs-mention');
-        return Array.from(mentions).map(mention => ({
-            type: mention.dataset.tipo,
-            id: mention.dataset.id,
-            label: mention.dataset.label
-        }));
+        return Array.from(mentions).map(mention => {
+            // Converter todos os data-attributes em um objeto
+            const mentionData = {};
+            Object.keys(mention.dataset).forEach(key => {
+                mentionData[key] = mention.dataset[key];
+            });
+            return mentionData;
+        });
     }
 
     getText() {
-        // Primeiro, vamos obter o texto com as quebras de linha preservadas
         const fullText = this.inputElement.innerText;
-
-        // Agora vamos substituir cada menção pelo seu JSON
         const mentions = this.inputElement.querySelectorAll('.mentionjs-mention');
         let result = fullText;
 
-        // Convertemos para array e invertemos para substituir de trás para frente
-        // isso evita que os índices mudem conforme fazemos as substituições
         Array.from(mentions)
             .reverse()
             .forEach(mention => {
-                const mentionData = {
-                    type: mention.dataset.tipo,
-                    id: mention.dataset.id,
-                    label: mention.dataset.label
-                };
+                // Converter todos os data-attributes em um objeto
+                const mentionData = {};
+                Object.keys(mention.dataset).forEach(key => {
+                    mentionData[key] = mention.dataset[key];
+                });
+
                 const startIndex = result.indexOf(mention.textContent);
                 if (startIndex !== -1) {
                     result = result.slice(0, startIndex) +
