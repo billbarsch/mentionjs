@@ -85,18 +85,39 @@
         const mention = new MentionJS({
             inputElement: editor,
             data: {
-                usuarios: 'https://jsonplaceholder.typicode.com/users?username_like=',
-                produtos: 'https://jsonplaceholder.typicode.com/products?title_like=',
-                vendas: [
-                    {
-                        id: 1,
-                        label: 'Venda 1'
-                    },
-                    {
-                        id: 2,
-                        label: 'Venda 2'
+                usuarios: {
+                    label: 'Usuários',
+                    data: 'https://jsonplaceholder.typicode.com/users?username_like=',
+                    parseResponse: (data) => data.map(user => ({
+                        id: user.id,
+                        label: user.username
+                    }))
+                },
+                produtos: {
+                    label: 'Produtos',
+                    data: 'https://dummyjson.com/products/search?q=',
+                    parseResponse: (data) => {
+                        if (!data || !data.products) return [];
+
+                        return data.products.map(product => ({
+                            id: product.id,
+                            label: product.title
+                        }));
                     }
-                ]
+                },
+                vendas: {
+                    label: 'Vendas',
+                    data: [
+                        {
+                            id: 1,
+                            label: 'Venda 1'
+                        },
+                        {
+                            id: 2,
+                            label: 'Venda 2'
+                        }
+                    ]
+                }
             },
             types: ['usuarios', 'produtos', 'vendas'],
             styles: {
@@ -114,6 +135,16 @@
                     background: '#fff9c4',
                     color: '#f57f17',
                     border: '#ffd54f'
+                }
+            },
+            fieldMappings: {
+                usuarios: {
+                    id: 'id',
+                    label: ['username', 'name', 'email']
+                },
+                produtos: {
+                    id: 'id',
+                    label: ['title', 'description']
                 }
             }
         });

@@ -1,7 +1,37 @@
 class MentionJS {
     constructor(options) {
         this.inputElement = options.inputElement;
-        this.data = options.data || {};
+        this.data = {};
+        this.parseFunctions = {};
+        this.typeLabels = {};
+
+        // Processar dados e configurações
+        Object.entries(options.data || {}).forEach(([tipo, config]) => {
+            if (typeof config === 'string') {
+                // Se for string, é uma URL
+                this.data[tipo] = config;
+                this.parseFunctions[tipo] = data => Array.isArray(data) ?
+                    data.map(item => ({ id: item.id, label: item.label })) :
+                    [{ id: data.id, label: data.label }];
+                this.typeLabels[tipo] = tipo;
+            } else if (Array.isArray(config)) {
+                // Se for array, são dados estáticos
+                this.data[tipo] = config;
+                this.parseFunctions[tipo] = data => data.map(item => ({
+                    id: item.id,
+                    label: item.label
+                }));
+                this.typeLabels[tipo] = tipo;
+            } else {
+                // Se for objeto, contém dados e função de parse
+                this.data[tipo] = config.data;
+                this.parseFunctions[tipo] = config.parseResponse || (data => Array.isArray(data) ?
+                    data.map(item => ({ id: item.id, label: item.label })) :
+                    [{ id: data.id, label: data.label }]);
+                this.typeLabels[tipo] = config.label || tipo;
+            }
+        });
+
         this.types = options.types || [];
         this.styles = options.styles || {};
 
@@ -17,6 +47,7 @@ class MentionJS {
         this.selectedIndex = -1;
         this.currentOptions = [];
         this.searchTimeout = null;
+        this.currentQuery = '';
 
         // Cache de dados
         this.dataCache = {};
@@ -117,6 +148,11 @@ class MentionJS {
         }
     }
 
+    // Função para remover acentos de uma string
+    removeAcentos(str) {
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
     async handleKeyUp(event) {
         if (this.autocompleteContainer.style.display === 'block' &&
             ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) {
@@ -134,28 +170,27 @@ class MentionJS {
             const atIndex = textBeforeCursor.lastIndexOf('@');
 
             if (atIndex !== -1 && textBeforeCursor.slice(atIndex).includes('@')) {
-                const query = textBeforeCursor.substring(atIndex + 1).toLowerCase();
+                const query = textBeforeCursor.substring(atIndex + 1);
+                this.currentQuery = query;
 
                 if (!this.buscandoRegistro) {
                     const tiposDisponiveis = Array.isArray(this.types) ? this.types : [];
-                    this.currentOptions = tiposDisponiveis.filter(option =>
-                        option.toLowerCase().includes(query)
-                    );
+                    this.currentOptions = tiposDisponiveis.filter(option => {
+                        const label = this.typeLabels[option] || option;
+                        return this.removeAcentos(label.toLowerCase())
+                            .includes(this.removeAcentos(query.toLowerCase()));
+                    });
                     this.selectedIndex = this.currentOptions.length > 0 ? 0 : -1;
                     this.showAutocomplete(this.currentOptions, atIndex, false);
                 } else {
-                    // Limpar timeout anterior
                     if (this.searchTimeout) {
                         clearTimeout(this.searchTimeout);
                     }
 
-                    // Definir novo timeout para evitar muitas requisições
                     this.searchTimeout = setTimeout(async () => {
                         const registros = await this.fetchData(this.tipoSelecionado, query);
                         const registrosArray = Array.isArray(registros) ? registros : [];
-                        this.currentOptions = registrosArray.filter(registro =>
-                            (registro.label || '').toLowerCase().includes(query)
-                        );
+                        this.currentOptions = registrosArray;
                         this.selectedIndex = this.currentOptions.length > 0 ? 0 : -1;
                         this.showAutocompleteRegistros(this.currentOptions, atIndex);
                     }, 300);
@@ -164,11 +199,13 @@ class MentionJS {
                 this.hideAutocomplete();
                 this.buscandoRegistro = false;
                 this.tipoSelecionado = null;
+                this.currentQuery = '';
             }
         } else {
             this.hideAutocomplete();
             this.buscandoRegistro = false;
             this.tipoSelecionado = null;
+            this.currentQuery = '';
         }
     }
 
@@ -207,7 +244,7 @@ class MentionJS {
                 if (index === this.selectedIndex) {
                     item.classList.add('selected');
                 }
-                item.textContent = option;
+                item.textContent = this.typeLabels[option] || option;
 
                 const handleClick = () => {
                     if (!isRegistro) {
@@ -316,18 +353,18 @@ class MentionJS {
 
     async fetchData(tipo, query = '') {
         const url = this.data[tipo];
-        if (typeof url !== 'string') {
-            // Se for array de dados estáticos, normaliza para o padrão id e label
-            const dados = Array.isArray(this.data[tipo]) ? this.data[tipo] : [];
-            const dadosNormalizados = dados.map(item => ({
-                id: item.id,
-                label: item.label || item.nome || item.name || item.title || item.descricao || item.username
-            }));
+        const parseFunction = this.parseFunctions[tipo];
 
-            // Se tiver query, filtra os dados
+        if (typeof url !== 'string') {
+            // Se for array de dados estáticos
+            const dados = Array.isArray(this.data[tipo]) ? this.data[tipo] : [];
+            const dadosNormalizados = parseFunction(dados);
+
+            // Se tiver query, filtra os dados ignorando acentos
             if (query) {
                 return dadosNormalizados.filter(item =>
-                    item.label.toLowerCase().includes(query.toLowerCase())
+                    this.removeAcentos(item.label.toLowerCase())
+                        .includes(this.removeAcentos(query.toLowerCase()))
                 );
             }
             return dadosNormalizados;
@@ -339,47 +376,45 @@ class MentionJS {
                 return this.dataCache[tipo];
             }
 
-            // Construir URL com parâmetros de busca
-            let urlFinal = url;
-            if (query) {
-                // Verifica o formato da URL e adiciona o parâmetro apropriado
-                if (url.includes('_like=')) {
-                    // JSONPlaceholder style
-                    urlFinal = url + encodeURIComponent(query);
-                } else if (url.includes('?')) {
-                    // URL já tem parâmetros
-                    if (url.endsWith('?') || url.endsWith('&')) {
-                        urlFinal = url + 'q=' + encodeURIComponent(query);
-                    } else {
-                        urlFinal = url + '&q=' + encodeURIComponent(query);
-                    }
-                } else {
-                    // URL sem parâmetros
-                    urlFinal = url + '?q=' + encodeURIComponent(query);
-                }
-            }
+            // Remove espaços extras e caracteres especiais da query
+            const queryProcessada = query.trim().replace(/[^\w\s]/gi, '');
+
+            // Concatena a query à URL (mesmo se estiver vazia)
+            const urlFinal = url + encodeURIComponent(queryProcessada);
 
             const response = await fetch(urlFinal);
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                console.error(`Erro na API: ${response.status} - ${response.statusText}`);
+                return [];
             }
             const data = await response.json();
 
-            // Garantir que data seja um array
-            const dataArray = Array.isArray(data) ? data : [data];
+            try {
+                // Aplicar função de parse personalizada
+                const normalizedData = parseFunction(data);
 
-            // Normalizar os dados para sempre ter id e label
-            const normalizedData = dataArray.map(item => ({
-                id: item.id || Math.random().toString(36).substr(2, 9),
-                label: item.label || item.nome || item.name || item.title || item.descricao || item.username || 'Sem nome'
-            }));
+                // Verificar se o resultado é um array
+                if (!Array.isArray(normalizedData)) {
+                    console.error('A função parseResponse deve retornar um array');
+                    return [];
+                }
 
-            // Armazenar no cache apenas se não for uma busca
-            if (!query) {
-                this.dataCache[tipo] = normalizedData;
+                // Verificar se todos os itens têm id e label
+                const dadosValidos = normalizedData.filter(item =>
+                    item && typeof item === 'object' &&
+                    'id' in item && 'label' in item
+                );
+
+                // Armazenar no cache apenas se não for uma busca
+                if (!query) {
+                    this.dataCache[tipo] = dadosValidos;
+                }
+
+                return dadosValidos;
+            } catch (parseError) {
+                console.error('Erro ao processar dados:', parseError);
+                return [];
             }
-
-            return normalizedData;
         } catch (error) {
             console.error('Erro ao buscar dados:', error);
             return [];
@@ -400,13 +435,14 @@ class MentionJS {
             if (atPosition !== -1) {
                 const beforeText = text.substring(0, atPosition);
                 const afterText = text.substring(atPosition + 1);
-                const afterSpace = afterText.indexOf(' ');
-                const remainingText = afterSpace !== -1 ? afterText.substring(afterSpace + 1) : '';
+                // Usar o currentQuery para determinar quanto texto remover
+                const queryLength = this.currentQuery.length;
+                const remainingText = afterText.substring(queryLength);
 
                 currentNode.textContent = beforeText + '@';
 
-                if (remainingText) {
-                    const textNode = document.createTextNode(' ' + remainingText);
+                if (remainingText.trim()) {
+                    const textNode = document.createTextNode(' ' + remainingText.trimLeft());
                     currentNode.parentNode.insertBefore(textNode, currentNode.nextSibling);
                 }
 
@@ -420,17 +456,17 @@ class MentionJS {
             currentNode = currentNode.previousSibling;
         }
 
-        const registros = await this.fetchData(tipo);
+        // Buscar todos os registros inicialmente
+        const registros = await this.fetchData(tipo, '');
         this.currentOptions = registros;
-        this.selectedIndex = 0;
+        this.selectedIndex = registros.length > 0 ? 0 : -1;
         this.showAutocompleteRegistros(registros, atIndex);
     }
 
     selectRegistro(registro, atIndex) {
         const label = registro.label;
-        const tipoFormatado = this.tipoSelecionado.charAt(0).toUpperCase() +
-            this.tipoSelecionado.slice(1).toLowerCase();
-        const textoFinal = `${tipoFormatado}:${label}`;
+        const tipoLabel = this.typeLabels[this.tipoSelecionado];
+        const textoFinal = `${tipoLabel}:${label}`;
 
         const mention = document.createElement('span');
         mention.classList.add('mentionjs-mention', `mentionjs-mention-${this.tipoSelecionado.toLowerCase()}`);
@@ -450,8 +486,8 @@ class MentionJS {
             if (atPosition !== -1) {
                 const beforeText = text.substring(0, atPosition);
                 const afterText = text.substring(atPosition + 1);
-                const afterSpace = afterText.indexOf(' ');
-                const remainingText = afterSpace !== -1 ? afterText.substring(afterSpace + 1) : '';
+                const queryLength = this.currentQuery.length;
+                const remainingText = afterText.substring(queryLength);
 
                 currentNode.textContent = beforeText;
                 currentNode.parentNode.insertBefore(mention, currentNode.nextSibling);
@@ -459,8 +495,8 @@ class MentionJS {
                 const spaceNode = document.createTextNode(' ');
                 currentNode.parentNode.insertBefore(spaceNode, mention.nextSibling);
 
-                if (remainingText) {
-                    const textNode = document.createTextNode(remainingText);
+                if (remainingText.trim()) {
+                    const textNode = document.createTextNode(remainingText.trimLeft());
                     currentNode.parentNode.insertBefore(textNode, spaceNode.nextSibling);
                 }
 
@@ -477,6 +513,7 @@ class MentionJS {
         this.hideAutocomplete();
         this.buscandoRegistro = false;
         this.tipoSelecionado = null;
+        this.currentQuery = '';
     }
 
     destroy() {

@@ -7,6 +7,7 @@ Uma biblioteca JavaScript leve e flexível para adicionar funcionalidade de men�
 - 🚀 Suporte para múltiplos tipos de menções (@usuarios, @produtos, etc.)
 - 🎨 Estilos personalizáveis por tipo de menção
 - 🔄 Suporte para dados estáticos e dinâmicos (via API)
+- 🔍 Funções de parse personalizadas para cada tipo de dado
 - 📝 Compatível com campos contentEditable
 - ⚛️ Exemplo de integração com React
 - 🌐 Exemplo de uso com HTML puro
@@ -26,13 +27,34 @@ const editor = document.getElementById('editor');
 const mention = new MentionJS({
     inputElement: editor,
     data: {
-        usuarios: 'https://api.exemplo.com/usuarios?q=',
-        produtos: [
-            { id: 1, label: 'Produto 1' },
-            { id: 2, label: 'Produto 2' }
-        ]
+        // URL direta com função de parse personalizada e label personalizado
+        usuarios: {
+            label: 'Usuários',
+            data: 'https://jsonplaceholder.typicode.com/users?username_like=',
+            parseResponse: (data) => data.map(user => ({
+                id: user.id,
+                label: user.username
+            }))
+        },
+        // API com estrutura diferente e label personalizado
+        produtos: {
+            label: 'Produtos',
+            data: 'https://dummyjson.com/products/search?q=',
+            parseResponse: (data) => data.products.map(product => ({
+                id: product.id,
+                label: product.title
+            }))
+        },
+        // Dados estáticos com label personalizado
+        vendas: {
+            label: 'Vendas',
+            data: [
+                { id: 1, label: 'Venda #001' },
+                { id: 2, label: 'Venda #002' }
+            ]
+        }
     },
-    types: ['usuarios', 'produtos'],
+    types: ['usuarios', 'produtos', 'vendas'],
     styles: {
         usuarios: {
             background: '#e3f2fd',
@@ -76,9 +98,55 @@ npm start
 ### Opções
 
 - `inputElement`: Elemento HTML onde as menções serão habilitadas
-- `data`: Objeto com dados estáticos ou URLs para busca dinâmica
+- `data`: Objeto com configuração dos tipos de menção. Cada tipo pode ser:
+  - Uma string com URL preparada para busca (ex: 'https://api.exemplo.com/busca?q=')
+  - Um array com dados estáticos no formato `{id, label}`
+  - Um objeto com as seguintes propriedades:
+    - `label`: Nome amigável do tipo que será exibido no menu de seleção
+    - `data`: URL ou array de dados
+    - `parseResponse`: Função de transformação dos dados
 - `types`: Array com os tipos de menções disponíveis
 - `styles`: Objeto com estilos personalizados por tipo
+
+### Configuração de Dados
+
+O objeto `data` aceita três formatos para cada tipo:
+
+1. URL direta (usa parser padrão):
+```javascript
+usuarios: 'https://api.exemplo.com/usuarios?q='
+```
+
+2. Array de dados estáticos (já no formato correto):
+```javascript
+vendas: [
+    { id: 1, label: 'Venda #001' },
+    { id: 2, label: 'Venda #002' }
+]
+```
+
+3. Objeto com label, URL e função de parse personalizada:
+```javascript
+produtos: {
+    label: 'Produtos', // Nome amigável que aparecerá no menu
+    data: 'https://api.exemplo.com/produtos/busca?q=',
+    parseResponse: (data) => {
+        // Transforma os dados no formato esperado: array de {id, label}
+        return data.results.map(item => ({
+            id: item.codigo,
+            label: item.nome
+        }));
+    }
+}
+```
+
+A função `parseResponse` deve sempre retornar um array de objetos com a estrutura:
+```javascript
+{
+    id: string | number,    // Identificador único
+    label: string          // Texto que será exibido
+}
+```
 
 ### Métodos
 

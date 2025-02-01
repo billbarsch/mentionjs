@@ -12,8 +12,23 @@ function App() {
         const mention = new MentionJS({
             inputElement: editor,
             data: {
-                usuarios: 'https://jsonplaceholder.typicode.com/users?username_like=',
-                produtos: 'https://jsonplaceholder.typicode.com/products?title_like=',
+                usuarios: {
+                    data: 'https://jsonplaceholder.typicode.com/users?username_like=',
+                    parseResponse: (data) => data.map(user => ({
+                        id: user.id,
+                        label: user.username
+                    }))
+                },
+                produtos: {
+                    data: 'https://dummyjson.com/products/search?q=',
+                    parseResponse: (data) => {
+                        if (!data || !data.products) return [];
+                        return data.products.map(product => ({
+                            id: product.id,
+                            label: product.title
+                        }));
+                    }
+                },
                 vendas: [
                     { id: 1, label: 'Venda #001' },
                     { id: 2, label: 'Venda #002' },
@@ -36,6 +51,16 @@ function App() {
                     background: '#e8f5e9',
                     color: '#2e7d32',
                     border: '#a5d6a7'
+                }
+            },
+            fieldMappings: {
+                usuarios: {
+                    id: 'id',
+                    label: ['username', 'name', 'email']
+                },
+                produtos: {
+                    id: 'id',
+                    label: ['title', 'description']
                 }
             }
         });
