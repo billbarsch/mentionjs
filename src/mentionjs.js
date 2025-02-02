@@ -6,6 +6,11 @@ class MentionJS {
         this.typeLabels = {};
         this.displayFunctions = {};
 
+        // Adicionar variáveis para armazenar informações do cursor
+        this.lastCursorNode = null;
+        this.lastCursorOffset = null;
+        this.lastAtPosition = null;
+
         // Processar dados e configurações
         Object.entries(options.data || {}).forEach(([tipo, config]) => {
             if (typeof config === 'string') {
@@ -157,8 +162,12 @@ class MentionJS {
                 this.navigateOptions(event.key === 'ArrowDown' ? 1 : -1);
             } else if (event.key === 'Enter' && this.selectedIndex !== -1) {
                 event.preventDefault();
-                const selectedItem = this.autocompleteContainer.children[this.selectedIndex];
-                selectedItem.click();
+                const selectedItem = this.currentOptions[this.selectedIndex];
+                if (this.buscandoRegistro) {
+                    this.selectRegistro(selectedItem, -1);
+                } else {
+                    this.selectTipo(selectedItem, -1);
+                }
             } else if (event.key === 'Escape') {
                 event.preventDefault();
                 this.hideAutocomplete();
@@ -188,6 +197,11 @@ class MentionJS {
             const atIndex = textBeforeCursor.lastIndexOf('@');
 
             if (atIndex !== -1 && textBeforeCursor.slice(atIndex).includes('@')) {
+                // Armazenar informações do cursor
+                this.lastCursorNode = currentNode;
+                this.lastCursorOffset = cursorPosition;
+                this.lastAtPosition = atIndex;
+
                 const query = textBeforeCursor.substring(atIndex + 1);
                 this.currentQuery = query;
 
@@ -218,12 +232,20 @@ class MentionJS {
                 this.buscandoRegistro = false;
                 this.tipoSelecionado = null;
                 this.currentQuery = '';
+                // Limpar informações do cursor
+                this.lastCursorNode = null;
+                this.lastCursorOffset = null;
+                this.lastAtPosition = null;
             }
         } else {
             this.hideAutocomplete();
             this.buscandoRegistro = false;
             this.tipoSelecionado = null;
             this.currentQuery = '';
+            // Limpar informações do cursor
+            this.lastCursorNode = null;
+            this.lastCursorOffset = null;
+            this.lastAtPosition = null;
         }
     }
 
@@ -264,25 +286,15 @@ class MentionJS {
                 }
                 item.textContent = this.typeLabels[option] || option;
 
-                const handleClick = () => {
-                    if (!isRegistro) {
-                        this.selectTipo(option, atIndex);
-                    } else {
-                        this.selectRegistro(option, atIndex);
-                    }
-                };
-
-                const handleMouseOver = () => {
-                    const items = this.autocompleteContainer.children;
-                    for (let i = 0; i < items.length; i++) {
-                        items[i].classList.remove('selected');
-                    }
-                    item.classList.add('selected');
+                item.addEventListener('click', () => {
                     this.selectedIndex = index;
-                };
+                    if (!isRegistro) {
+                        this.selectTipo(option, -1);
+                    } else {
+                        this.selectRegistro(option, -1);
+                    }
+                });
 
-                item.addEventListener('click', handleClick);
-                item.addEventListener('mouseover', handleMouseOver);
                 this.autocompleteContainer.appendChild(item);
             });
         }
@@ -292,8 +304,6 @@ class MentionJS {
 
     showAutocompleteRegistros(registros, atIndex) {
         this.autocompleteContainer.innerHTML = '';
-
-        console.log('Registros recebidos:', registros);
 
         if (!Array.isArray(registros) || registros.length === 0) {
             const item = document.createElement('div');
@@ -314,25 +324,14 @@ class MentionJS {
                 item.classList.add('selected');
             }
 
-            // Usar a função de display configurada para este tipo
             const displayFunction = this.displayFunctions[this.tipoSelecionado];
             item.textContent = displayFunction(registro);
 
-            const handleClick = () => {
-                this.selectRegistro(registro, atIndex);
-            };
-
-            const handleMouseOver = () => {
-                const items = this.autocompleteContainer.children;
-                for (let i = 0; i < items.length; i++) {
-                    items[i].classList.remove('selected');
-                }
-                item.classList.add('selected');
+            item.addEventListener('click', () => {
                 this.selectedIndex = index;
-            };
+                this.selectRegistro(registro, -1);
+            });
 
-            item.addEventListener('click', handleClick);
-            item.addEventListener('mouseover', handleMouseOver);
             this.autocompleteContainer.appendChild(item);
         });
 
@@ -380,11 +379,9 @@ class MentionJS {
         const parseFunction = this.parseFunctions[tipo];
 
         if (typeof url !== 'string') {
-            // Se for array de dados estáticos
             const dados = Array.isArray(this.data[tipo]) ? this.data[tipo] : [];
             const dadosNormalizados = parseFunction(dados);
 
-            // Se tiver query, filtra os dados ignorando acentos
             if (query) {
                 return dadosNormalizados.filter(item =>
                     this.removeAcentos(item.label?.toLowerCase() || '')
@@ -395,35 +392,26 @@ class MentionJS {
         }
 
         try {
-            // Se já temos no cache e não tem query, retorna do cache
             if (this.dataCache[tipo] && !query) {
                 return this.dataCache[tipo];
             }
 
-            // Remove espaços extras e caracteres especiais da query
             const queryProcessada = query.trim().replace(/[^\w\s]/gi, '');
-
-            // Concatena a query à URL (mesmo se estiver vazia)
             const urlFinal = url + encodeURIComponent(queryProcessada);
 
             const response = await fetch(urlFinal);
             if (!response.ok) {
-                console.error(`Erro na API: ${response.status} - ${response.statusText}`);
                 return [];
             }
             const data = await response.json();
 
             try {
-                // Aplicar função de parse personalizada
                 const normalizedData = parseFunction(data);
 
-                // Verificar se o resultado é um array
                 if (!Array.isArray(normalizedData)) {
-                    console.error('A função parseResponse deve retornar um array');
                     return [];
                 }
 
-                // Armazenar no cache apenas se não for uma busca
                 if (!query) {
                     this.dataCache[tipo] = normalizedData;
                 }
@@ -431,14 +419,9 @@ class MentionJS {
                 return normalizedData;
 
             } catch (parseError) {
-                console.error('Erro ao processar dados:', parseError);
-                console.error('Dados recebidos:', data);
                 return [];
             }
         } catch (error) {
-            console.error('Erro ao buscar dados:', error);
-            console.error('URL:', url);
-            console.error('Query:', query);
             return [];
         }
     }
@@ -447,17 +430,15 @@ class MentionJS {
         this.tipoSelecionado = tipo;
         this.buscandoRegistro = true;
 
-        const selection = window.getSelection();
-        const range = selection.getRangeAt(0);
-        let currentNode = range.startContainer;
+        // Usar as informações armazenadas do cursor
+        let currentNode = this.lastCursorNode;
+        let atPosition = this.lastAtPosition;
 
-        while (currentNode && currentNode.nodeType === Node.TEXT_NODE) {
+        if (currentNode && currentNode.nodeType === Node.TEXT_NODE) {
             const text = currentNode.textContent;
-            const atPosition = text.lastIndexOf('@');
             if (atPosition !== -1) {
                 const beforeText = text.substring(0, atPosition);
                 const afterText = text.substring(atPosition + 1);
-                // Usar o currentQuery para determinar quanto texto remover
                 const queryLength = this.currentQuery.length;
                 const remainingText = afterText.substring(queryLength);
 
@@ -471,23 +452,20 @@ class MentionJS {
                 const newRange = document.createRange();
                 newRange.setStart(currentNode, atPosition + 1);
                 newRange.collapse(true);
+                const selection = window.getSelection();
                 selection.removeAllRanges();
                 selection.addRange(newRange);
-                break;
             }
-            currentNode = currentNode.previousSibling;
         }
 
-        // Buscar todos os registros inicialmente
         const registros = await this.fetchData(tipo, '');
         this.currentOptions = registros;
         this.selectedIndex = registros.length > 0 ? 0 : -1;
-        this.showAutocompleteRegistros(registros, atIndex);
+        this.showAutocompleteRegistros(registros, atPosition);
     }
 
     selectRegistro(registro, atIndex) {
         const tipoLabel = this.typeLabels[this.tipoSelecionado];
-        // Usar a função de display para o texto final também
         const displayFunction = this.displayFunctions[this.tipoSelecionado];
         const label = displayFunction(registro);
         const textoFinal = `${tipoLabel}:${label}`;
@@ -497,18 +475,16 @@ class MentionJS {
         mention.textContent = textoFinal;
         mention.contentEditable = false;
 
-        // Armazenar todos os dados do registro no elemento
         Object.entries(registro).forEach(([key, value]) => {
             mention.dataset[key] = value;
         });
 
-        const selection = window.getSelection();
-        const range = selection.getRangeAt(0);
-        let currentNode = range.startContainer;
+        // Usar as informações armazenadas do cursor
+        let currentNode = this.lastCursorNode;
+        let atPosition = this.lastAtPosition;
 
-        while (currentNode && currentNode.nodeType === Node.TEXT_NODE) {
+        if (currentNode && currentNode.nodeType === Node.TEXT_NODE) {
             const text = currentNode.textContent;
-            const atPosition = text.lastIndexOf('@');
             if (atPosition !== -1) {
                 const beforeText = text.substring(0, atPosition);
                 const afterText = text.substring(atPosition + 1);
@@ -529,11 +505,10 @@ class MentionJS {
                 const newRange = document.createRange();
                 newRange.setStartAfter(spaceNode);
                 newRange.collapse(true);
+                const selection = window.getSelection();
                 selection.removeAllRanges();
                 selection.addRange(newRange);
-                break;
             }
-            currentNode = currentNode.previousSibling;
         }
 
         this.hideAutocomplete();
