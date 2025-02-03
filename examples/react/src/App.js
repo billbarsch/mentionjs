@@ -7,6 +7,7 @@ function App() {
     const outputHtmlRef = useRef(null);
     const outputJsonRef = useRef(null);
     const outputTextRef = useRef(null);
+    const outputDisplayRef = useRef(null);
     const mentionRef = useRef(null);
 
     useEffect(() => {
@@ -17,31 +18,52 @@ function App() {
                     usuarios: {
                         label: 'Usuários',
                         data: 'https://jsonplaceholder.typicode.com/users?username_like=',
+                        prefix: 'Usuário: ',
+                        display: item => `${item.username} (${item.email})`,
                         parseResponse: (data) => data.map(user => ({
+                            tipo: 'usuario',
                             id: user.id,
-                            label: user.username
+                            username: user.username,
+                            email: user.email
                         }))
                     },
                     produtos: {
                         label: 'Produtos',
                         data: 'https://dummyjson.com/products/search?q=',
+                        prefix: 'Produto: ',
+                        display: item => `${item.title} - ${item.description}`,
                         parseResponse: (data) => {
                             if (!data || !data.products) return [];
                             return data.products.map(product => ({
+                                tipo: 'produto',
                                 id: product.id,
-                                label: product.title
+                                title: product.title,
+                                description: product.description
                             }));
                         }
                     },
                     vendas: {
                         label: 'Vendas',
+                        prefix: 'Venda: ',
+                        display: item => `${item.label} - R$ ${item.valor} (${item.data})`,
                         data: [
-                            { id: 1, label: 'Venda #001' },
-                            { id: 2, label: 'Venda #002' }
+                            {
+                                tipo: 'venda',
+                                id: 1,
+                                label: 'Venda 1',
+                                valor: 1000,
+                                data: '2024-03-20'
+                            },
+                            {
+                                tipo: 'venda',
+                                id: 2,
+                                label: 'Venda 2',
+                                valor: 2000,
+                                data: '2024-03-21'
+                            }
                         ]
                     }
                 },
-                types: ['usuarios', 'produtos', 'vendas'],
                 styles: {
                     usuarios: {
                         background: '#e3f2fd',
@@ -54,9 +76,9 @@ function App() {
                         border: '#ffd54f'
                     },
                     vendas: {
-                        background: '#f3e5f5',
-                        color: '#7b1fa2',
-                        border: '#ce93d8'
+                        background: '#fff9c4',
+                        color: '#f57f17',
+                        border: '#ffd54f'
                     }
                 }
             });
@@ -71,6 +93,9 @@ function App() {
                 if (outputTextRef.current) {
                     outputTextRef.current.textContent = mentionRef.current.getText();
                 }
+                if (outputDisplayRef.current) {
+                    outputDisplayRef.current.textContent = mentionRef.current.getDisplayText();
+                }
             };
 
             editorRef.current.addEventListener('input', updateOutputs);
@@ -83,6 +108,10 @@ function App() {
             updateOutputs();
 
             return () => {
+                if (editorRef.current) {
+                    editorRef.current.removeEventListener('input', updateOutputs);
+                    editorRef.current.removeEventListener('keydown', updateOutputs);
+                }
                 if (mentionRef.current) {
                     mentionRef.current.destroy();
                 }
@@ -106,6 +135,9 @@ function App() {
 
                 <h3>Conteúdo Texto:</h3>
                 <pre ref={outputTextRef}></pre>
+
+                <h3>Conteúdo Display:</h3>
+                <pre ref={outputDisplayRef}></pre>
             </div>
         </div>
     );

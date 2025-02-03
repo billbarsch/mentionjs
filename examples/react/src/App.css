@@ -1,38 +1,48 @@
-body {
+.App {
     font-family: Arial, sans-serif;
-    max-width: 600px;
+    max-width: 800px;
     margin: 20px auto;
     padding: 0 20px;
 }
 
-#editor {
+.editor {
     width: 100%;
-    min-height: 100px;
-    border: 1px solid #ccc;
-    padding: 10px;
-    border-radius: 4px;
+    min-height: 150px;
+    border: 2px solid #ccc;
+    padding: 15px;
+    border-radius: 8px;
     margin: 20px 0;
+    font-size: 16px;
+    line-height: 1.5;
     white-space: pre-wrap;
     word-wrap: break-word;
-    line-height: 1.5;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.editor:focus {
+    outline: none;
+    border-color: #1565c0;
+    box-shadow: 0 2px 8px rgba(21, 101, 192, 0.2);
 }
 
 .output {
     background-color: #f8f9fa;
-    padding: 15px;
-    border-radius: 4px;
+    padding: 20px;
+    border-radius: 8px;
     margin-top: 20px;
 }
 
 .output h3 {
     margin-top: 0;
     color: #555;
+    font-size: 18px;
 }
 
 pre {
     background-color: #fff;
-    padding: 10px;
-    border-radius: 4px;
+    padding: 15px;
+    border-radius: 6px;
     border: 1px solid #ddd;
     overflow-y: auto;
     white-space: pre-wrap !important;
@@ -46,4 +56,5 @@ pre {
     display: block;
     width: 100%;
     box-sizing: border-box;
+    font-size: 14px;
 }

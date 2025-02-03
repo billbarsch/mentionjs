@@ -11,6 +11,7 @@ Uma biblioteca JavaScript leve e flexível para adicionar funcionalidade de men�
 - 📝 Compatível com campos contentEditable
 - ⚛️ Exemplo de integração com React
 - 🌐 Exemplo de uso com HTML puro
+- 🏷️ Prefixos personalizáveis por tipo de menção
 
 ## Instalação
 
@@ -31,9 +32,10 @@ const mention = new MentionJS({
         usuarios: {
             label: 'Usuários',
             data: 'https://jsonplaceholder.typicode.com/users?username_like=',
+            prefix: 'Usuário: ',
             display: item => `${item.username} (${item.email})`,
             parseResponse: (data) => data.map(user => ({
-                type: 'usuario',
+                tipo: 'usuario',
                 id: user.id,
                 username: user.username,
                 email: user.email
@@ -43,11 +45,12 @@ const mention = new MentionJS({
         produtos: {
             label: 'Produtos',
             data: 'https://dummyjson.com/products/search?q=',
+            prefix: 'Produto: ',
             display: item => `${item.title} - ${item.description}`,
             parseResponse: (data) => {
                 if (!data || !data.products) return [];
                 return data.products.map(product => ({
-                    type: 'produto',
+                    tipo: 'produto',
                     id: product.id,
                     title: product.title,
                     description: product.description
@@ -57,15 +60,18 @@ const mention = new MentionJS({
         // Dados estáticos com display personalizado
         vendas: {
             label: 'Vendas',
+            prefix: 'Venda: ',
             display: item => `${item.label} - R$ ${item.valor} (${item.data})`,
             data: [
                 {
+                    tipo: 'venda',
                     id: 1,
                     label: 'Venda 1',
                     valor: 1000,
                     data: '2024-03-20'
                 },
                 {
+                    tipo: 'venda',
                     id: 2,
                     label: 'Venda 2',
                     valor: 2000,
@@ -106,6 +112,146 @@ open examples/html/url.html
 ```
 
 ### React
+```jsx
+import React, { useEffect, useRef } from 'react';
+import MentionJS from '@billbarsch/mentionjs';
+
+function App() {
+    const editorRef = useRef(null);
+    const outputHtmlRef = useRef(null);
+    const outputJsonRef = useRef(null);
+    const outputTextRef = useRef(null);
+    const outputDisplayRef = useRef(null);
+    const mentionRef = useRef(null);
+
+    useEffect(() => {
+        if (editorRef.current) {
+            mentionRef.current = new MentionJS({
+                inputElement: editorRef.current,
+                data: {
+                    usuarios: {
+                        label: 'Usuários',
+                        data: 'https://jsonplaceholder.typicode.com/users?username_like=',
+                        prefix: 'Usuário: ',
+                        display: item => `${item.username} (${item.email})`,
+                        parseResponse: (data) => data.map(user => ({
+                            tipo: 'usuario',
+                            id: user.id,
+                            username: user.username,
+                            email: user.email
+                        }))
+                    },
+                    produtos: {
+                        label: 'Produtos',
+                        data: 'https://dummyjson.com/products/search?q=',
+                        prefix: 'Produto: ',
+                        display: item => `${item.title} - ${item.description}`,
+                        parseResponse: (data) => {
+                            if (!data || !data.products) return [];
+                            return data.products.map(product => ({
+                                tipo: 'produto',
+                                id: product.id,
+                                title: product.title,
+                                description: product.description
+                            }));
+                        }
+                    },
+                    vendas: {
+                        label: 'Vendas',
+                        prefix: 'Venda: ',
+                        display: item => `${item.label} - R$ ${item.valor} (${item.data})`,
+                        data: [
+                            {
+                                tipo: 'venda',
+                                id: 1,
+                                label: 'Venda 1',
+                                valor: 1000,
+                                data: '2024-03-20'
+                            },
+                            {
+                                tipo: 'venda',
+                                id: 2,
+                                label: 'Venda 2',
+                                valor: 2000,
+                                data: '2024-03-21'
+                            }
+                        ]
+                    }
+                },
+                styles: {
+                    usuarios: {
+                        background: '#e3f2fd',
+                        color: '#1565c0',
+                        border: '#90caf9'
+                    },
+                    produtos: {
+                        background: '#fff9c4',
+                        color: '#f57f17',
+                        border: '#ffd54f'
+                    },
+                    vendas: {
+                        background: '#fff9c4',
+                        color: '#f57f17',
+                        border: '#ffd54f'
+                    }
+                }
+            });
+
+            const updateOutputs = () => {
+                if (outputHtmlRef.current) {
+                    outputHtmlRef.current.textContent = mentionRef.current.getHtml();
+                }
+                if (outputJsonRef.current) {
+                    outputJsonRef.current.textContent = JSON.stringify(mentionRef.current.getJson(), null, 2);
+                }
+                if (outputTextRef.current) {
+                    outputTextRef.current.textContent = mentionRef.current.getText();
+                }
+                if (outputDisplayRef.current) {
+                    outputDisplayRef.current.textContent = mentionRef.current.getDisplayText();
+                }
+            };
+
+            editorRef.current.addEventListener('input', updateOutputs);
+            return () => {
+                if (editorRef.current) {
+                    editorRef.current.removeEventListener('input', updateOutputs);
+                }
+                if (mentionRef.current) {
+                    mentionRef.current.destroy();
+                }
+            };
+        }
+    }, []);
+
+    return (
+        <div className="App">
+            <h1>MentionJS - Exemplo React</h1>
+            <p>Digite @ para mencionar usuários, produtos ou vendas</p>
+
+            <div ref={editorRef} className="editor" contentEditable></div>
+
+            <div className="output">
+                <h3>Conteúdo HTML:</h3>
+                <pre ref={outputHtmlRef}></pre>
+
+                <h3>Conteúdo JSON:</h3>
+                <pre ref={outputJsonRef}></pre>
+
+                <h3>Conteúdo Texto:</h3>
+                <pre ref={outputTextRef}></pre>
+
+                <h3>Conteúdo Display:</h3>
+                <pre ref={outputDisplayRef}></pre>
+            </div>
+        </div>
+    );
+}
+
+export default App;
+```
+
+Para usar o exemplo React:
 ```bash
 # Entre na pasta do exemplo React
 cd examples/react
@@ -126,6 +272,7 @@ npm start
   - `label`: Nome amigável do tipo que será exibido no menu de seleção
   - `data`: URL para busca ou array de dados estáticos
   - `display`: Função que define como o item será exibido no menu de seleção
+  - `prefix`: Prefixo opcional que será adicionado antes do texto do display (ex: "Usuário: ")
   - `parseResponse`: Função de transformação dos dados da API (apenas para URLs)
 - `styles`: Objeto com estilos personalizados por tipo
 
@@ -168,9 +315,21 @@ A função `display` define como o item será exibido no menu de seleção e pod
 
 ### Métodos
 
-- `getText()`: Retorna o texto puro com as menções
+- `getText()`: Retorna o texto puro com as menções em formato JSON
 - `getHtml()`: Retorna o HTML do conteúdo com as menções formatadas
 - `getJson()`: Retorna um array com todas as menções e seus dados
+- `getDisplayText()`: Retorna o texto puro com as menções formatadas usando a função display original
+
+Por exemplo:
+```javascript
+// Se o texto no editor for: "Olá Usuário: Bret (Sincere@april.biz), como vai?"
+
+mention.getText()
+// Retorna: 'Olá {"tipo":"usuario","id":"1","username":"Bret","email":"Sincere@april.biz"}, como vai?'
+
+mention.getDisplayText()
+// Retorna: 'Olá Bret (Sincere@april.biz), como vai?'
+```
 
 ## Desenvolvimento
 
