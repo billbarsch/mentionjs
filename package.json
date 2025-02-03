@@ -1,6 +1,6 @@
 {
     "name": "@billbarsch/mentionjs",
-    "version": "1.2.3",
+    "version": "1.2.4",
     "description": "Uma biblioteca JavaScript para adicionar funcionalidade de menções em campos de texto editáveis",
     "main": "dist/mentionjs.js",
     "module": "dist/mentionjs.esm.js",
