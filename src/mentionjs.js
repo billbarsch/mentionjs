@@ -164,6 +164,7 @@ class MentionJS {
             } else if (event.key === 'Enter' && this.selectedIndex !== -1) {
                 event.preventDefault();
                 event.stopPropagation();
+                event.stopImmediatePropagation();
                 const selectedItem = this.currentOptions[this.selectedIndex];
                 if (this.buscandoRegistro) {
                     this.selectRegistro(selectedItem, -1);
@@ -610,7 +611,7 @@ class MentionJS {
 
     // Método público para verificar se o menu está aberto
     isMenuOpen() {
-        return this.autocompleteContainer.style.display === 'block' || this.buscandoRegistro;
+        return this.autocompleteContainer.style.display === 'block';
     }
 }
 
