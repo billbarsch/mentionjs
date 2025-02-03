@@ -73,6 +73,9 @@
 
         <h3>Conteúdo Texto:</h3>
         <pre id="output-text"></pre>
+
+        <h3>Conteúdo Display:</h3>
+        <pre id="output-display"></pre>
     </div>
 
     <script src="../../src/mentionjs.js"></script>
@@ -81,6 +84,7 @@
         const outputHtml = document.getElementById('output-html');
         const outputJson = document.getElementById('output-json');
         const outputText = document.getElementById('output-text');
+        const outputDisplay = document.getElementById('output-display');
 
         const mention = new MentionJS({
             inputElement: editor,
@@ -88,9 +92,10 @@
                 usuarios: {
                     label: 'Usuários',
                     data: 'https://jsonplaceholder.typicode.com/users?username_like=',
+                    prefix: 'Usuário: ',
                     display: item => `${item.username} (${item.email})`,
                     parseResponse: (data) => data.map(user => ({
-                        type: 'usuario',
+                        tipo: 'usuario',
                         id: user.id,
                         username: user.username,
                         email: user.email
@@ -99,11 +104,12 @@
                 produtos: {
                     label: 'Produtos',
                     data: 'https://dummyjson.com/products/search?q=',
+                    prefix: 'Produto: ',
                     display: item => `${item.title} - ${item.description}`,
                     parseResponse: (data) => {
                         if (!data || !data.products) return [];
                         return data.products.map(product => ({
-                            type: 'produto',
+                            tipo: 'produto',
                             id: product.id,
                             title: product.title,
                             description: product.description
@@ -112,15 +118,18 @@
                 },
                 vendas: {
                     label: 'Vendas',
+                    prefix: 'Venda: ',
                     display: item => `${item.label} - R$ ${item.valor} (${item.data})`,
                     data: [
                         {
+                            tipo: 'venda',
                             id: 1,
                             label: 'Venda 1',
                             valor: 1000,
                             data: '2024-03-20'
                         },
                         {
+                            tipo: 'venda',
                             id: 2,
                             label: 'Venda 2',
                             valor: 2000,
@@ -159,6 +168,10 @@
             // Atualizar Texto
             const texto = mention.getText();
             outputText.textContent = texto;
+
+            // Atualizar Display
+            const displayText = mention.getDisplayText();
+            outputDisplay.textContent = displayText;
 
             // Força o reflow
             outputText.style.display = 'none';

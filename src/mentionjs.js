@@ -5,6 +5,7 @@ class MentionJS {
         this.parseFunctions = {};
         this.typeLabels = {};
         this.displayFunctions = {};
+        this.prefixes = {};
 
         // Adicionar variáveis para armazenar informações do cursor
         this.lastCursorNode = null;
@@ -17,16 +18,15 @@ class MentionJS {
                 // Se for string, é uma URL
                 this.data[tipo] = config;
                 this.parseFunctions[tipo] = data => Array.isArray(data) ?
-                    data.map(item => ({ ...item, type: tipo })) :
-                    [{ ...item, type: tipo }];
+                    data.map(item => ({ ...item })) :
+                    [{ ...item }];
                 this.typeLabels[tipo] = tipo;
                 this.displayFunctions[tipo] = item => item.label || item.username || item.title || 'Sem nome';
             } else if (Array.isArray(config)) {
                 // Se for array, são dados estáticos
                 this.data[tipo] = config;
                 this.parseFunctions[tipo] = data => data.map(item => ({
-                    ...item,
-                    type: tipo
+                    ...item
                 }));
                 this.typeLabels[tipo] = tipo;
                 this.displayFunctions[tipo] = config.display || (item => item.label || 'Sem nome');
@@ -36,20 +36,21 @@ class MentionJS {
                 this.displayFunctions[tipo] = config.display || (item =>
                     item.label || item.username || item.title || item.name || 'Sem nome'
                 );
+                this.prefixes = this.prefixes || {};
+                this.prefixes[tipo] = config.prefix || '';
 
                 // Se os dados são um array, é estático
                 if (Array.isArray(config.data)) {
                     this.parseFunctions[tipo] = data => data.map(item => ({
-                        ...item,
-                        type: tipo
+                        ...item
                     }));
                 } else {
                     // Se não, usa o parseResponse para dados da URL
                     this.parseFunctions[tipo] = data => {
                         const parsed = config.parseResponse ? config.parseResponse(data) : data;
                         return Array.isArray(parsed) ?
-                            parsed.map(item => ({ ...item, type: tipo })) :
-                            [{ ...parsed, type: tipo }];
+                            parsed.map(item => ({ ...item })) :
+                            [{ ...parsed }];
                     };
                 }
                 this.typeLabels[tipo] = config.label || tipo;
@@ -467,8 +468,8 @@ class MentionJS {
     selectRegistro(registro, atIndex) {
         const tipoLabel = this.typeLabels[this.tipoSelecionado];
         const displayFunction = this.displayFunctions[this.tipoSelecionado];
-        const label = displayFunction(registro);
-        const textoFinal = `${tipoLabel}:${label}`;
+        const prefix = this.prefixes[this.tipoSelecionado] || '';
+        const textoFinal = prefix + displayFunction(registro);
 
         const mention = document.createElement('span');
         mention.classList.add('mentionjs-mention', `mentionjs-mention-${this.tipoSelecionado.toLowerCase()}`);
@@ -568,6 +569,38 @@ class MentionJS {
                     result = result.slice(0, startIndex) +
                         JSON.stringify(mentionData) +
                         result.slice(startIndex + mention.textContent.length);
+                }
+            });
+
+        return result;
+    }
+
+    getDisplayText() {
+        const fullText = this.inputElement.innerText;
+        const mentions = this.inputElement.querySelectorAll('.mentionjs-mention');
+        let result = fullText;
+
+        Array.from(mentions)
+            .reverse()
+            .forEach(mention => {
+                // Recuperar os dados do elemento
+                const mentionData = {};
+                Object.keys(mention.dataset).forEach(key => {
+                    mentionData[key] = mention.dataset[key];
+                });
+
+                // Encontrar o tipo baseado no dataset
+                const tipo = mentionData.tipo;
+                if (tipo && this.displayFunctions[tipo]) {
+                    // Usar a função display original para gerar o texto
+                    const displayText = this.displayFunctions[tipo](mentionData);
+
+                    const startIndex = result.indexOf(mention.textContent);
+                    if (startIndex !== -1) {
+                        result = result.slice(0, startIndex) +
+                            displayText +
+                            result.slice(startIndex + mention.textContent.length);
+                    }
                 }
             });
 
