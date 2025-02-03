@@ -163,6 +163,7 @@ class MentionJS {
                 this.navigateOptions(event.key === 'ArrowDown' ? 1 : -1);
             } else if (event.key === 'Enter' && this.selectedIndex !== -1) {
                 event.preventDefault();
+                event.stopPropagation();
                 const selectedItem = this.currentOptions[this.selectedIndex];
                 if (this.buscandoRegistro) {
                     this.selectRegistro(selectedItem, -1);
