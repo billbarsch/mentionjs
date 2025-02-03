@@ -607,6 +607,11 @@ class MentionJS {
 
         return result;
     }
+
+    // Método público para verificar se o menu está aberto
+    isMenuOpen() {
+        return this.autocompleteContainer.style.display === 'block';
+    }
 }
 
 // Exportar para uso como módulo
