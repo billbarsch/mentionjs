@@ -508,28 +508,32 @@ class MentionJS {
     }
 
     getText() {
-        const fullText = this.inputElement.innerText;
-        const mentions = this.inputElement.querySelectorAll('.mentionjs-mention');
-        let result = fullText;
+        // Criar uma cópia do conteúdo para manipulação
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = this.inputElement.innerHTML;
 
-        Array.from(mentions)
-            .reverse()
-            .forEach(mention => {
-                // Converter todos os data-attributes em um objeto
-                const mentionData = {};
-                Object.keys(mention.dataset).forEach(key => {
-                    mentionData[key] = mention.dataset[key];
-                });
-
-                const startIndex = result.indexOf(mention.textContent);
-                if (startIndex !== -1) {
-                    result = result.slice(0, startIndex) +
-                        JSON.stringify(mentionData) +
-                        result.slice(startIndex + mention.textContent.length);
-                }
+        // Processar todas as menções na cópia
+        const mentions = tempDiv.querySelectorAll('.mentionjs-mention');
+        Array.from(mentions).forEach(mention => {
+            const mentionData = {};
+            Object.keys(mention.dataset).forEach(key => {
+                mentionData[key] = mention.dataset[key];
             });
 
-        return result;
+            // Criar um nó de texto com o JSON
+            const jsonText = document.createTextNode(JSON.stringify(mentionData));
+            mention.parentNode.replaceChild(jsonText, mention);
+        });
+
+        // Converter todos os <br> e </div> em quebras de linha
+        const html = tempDiv.innerHTML;
+        const textWithBreaks = html
+            .replace(/<br\s*\/?>/gi, '\n')  // Substitui <br> por \n
+            .replace(/<\/div>/gi, '\n')     // Substitui </div> por \n
+            .replace(/<[^>]+>/g, '');       // Remove todas as outras tags HTML
+
+        // Remove quebras de linha duplicadas
+        return textWithBreaks.replace(/\n\n+/g, '\n\n').trim();
     }
 
     getDisplayText() {
