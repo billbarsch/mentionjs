@@ -60,7 +60,7 @@
 
 <body>
     <h1>MentionJS - Exemplo com URL</h1>
-    <p>Digite @ para mencionar usuários</p>
+    <p>Digite @ e escolha o tipo de menção (usuários, produtos ou vendas)</p>
 
     <div id="editor" contenteditable="true"></div>
 
@@ -92,14 +92,19 @@
                 usuarios: {
                     label: 'Usuários',
                     data: 'https://jsonplaceholder.typicode.com/users?username_like=',
-                    prefix: 'Usuário: ',
+                    prefix: 'Usuario: ',
                     display: item => `${item.username} (${item.email})`,
                     parseResponse: (data) => data.map(user => ({
                         tipo: 'usuario',
                         id: user.id,
                         username: user.username,
                         email: user.email
-                    }))
+                    })),
+                    styles: {
+                        background: '#e3f2fd',
+                        color: '#1565c0',
+                        border: '#90caf9'
+                    }
                 },
                 produtos: {
                     label: 'Produtos',
@@ -114,64 +119,50 @@
                             title: product.title,
                             description: product.description
                         }));
+                    },
+                    styles: {
+                        background: '#fff9c4',
+                        color: '#f57f17',
+                        border: '#ffd54f'
                     }
                 },
                 vendas: {
                     label: 'Vendas',
                     prefix: 'Venda: ',
-                    display: item => `${item.label} - R$ ${item.valor} (${item.data})`,
+                    display: item => `${item.label} - R$ ${item.valor}`,
                     data: [
                         {
                             tipo: 'venda',
                             id: 1,
                             label: 'Venda 1',
-                            valor: 1000,
-                            data: '2024-03-20'
+                            valor: 1000
                         },
                         {
                             tipo: 'venda',
                             id: 2,
                             label: 'Venda 2',
-                            valor: 2000,
-                            data: '2024-03-21'
+                            valor: 2000
                         }
-                    ]
-                }
-            },
-            styles: {
-                usuarios: {
-                    background: '#e3f2fd',
-                    color: '#1565c0',
-                    border: '#90caf9'
-                },
-                produtos: {
-                    background: '#fff9c4',
-                    color: '#f57f17',
-                    border: '#ffd54f'
-                },
-                vendas: {
-                    background: '#fff9c4',
-                    color: '#f57f17',
-                    border: '#ffd54f'
+                    ],
+                    parseResponse: (data) => data.map(venda => ({
+                        ...venda,
+                        tipo: 'venda'
+                    })),
+                    styles: {
+                        background: '#e8f5e9',
+                        color: '#2e7d32',
+                        border: '#a5d6a7'
+                    }
                 }
             }
         });
 
         // Script de atualização
         const updateOutputs = () => {
-            // Atualizar HTML
             outputHtml.textContent = mention.getHtml();
-
-            // Atualizar JSON
             outputJson.textContent = JSON.stringify(mention.getJson(), null, 2);
-
-            // Atualizar Texto
-            const texto = mention.getText();
-            outputText.textContent = texto;
-
-            // Atualizar Display
-            const displayText = mention.getDisplayText();
-            outputDisplay.textContent = displayText;
+            outputText.textContent = mention.getText();
+            outputDisplay.textContent = mention.getDisplayText();
 
             // Força o reflow
             outputText.style.display = 'none';

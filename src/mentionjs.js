@@ -6,58 +6,26 @@ class MentionJS {
         this.typeLabels = {};
         this.displayFunctions = {};
         this.prefixes = {};
+        this.styles = {};
 
-        // Adicionar variáveis para armazenar informações do cursor
+        // Variáveis para controle do cursor
         this.lastCursorNode = null;
         this.lastCursorOffset = null;
         this.lastAtPosition = null;
 
-        // Processar dados e configurações
+        // Processar configurações
         Object.entries(options.data || {}).forEach(([tipo, config]) => {
-            if (typeof config === 'string') {
-                // Se for string, é uma URL
-                this.data[tipo] = config;
-                this.parseFunctions[tipo] = data => Array.isArray(data) ?
-                    data.map(item => ({ ...item })) :
-                    [{ ...item }];
-                this.typeLabels[tipo] = tipo;
-                this.displayFunctions[tipo] = item => item.label || item.username || item.title || 'Sem nome';
-            } else if (Array.isArray(config)) {
-                // Se for array, são dados estáticos
-                this.data[tipo] = config;
-                this.parseFunctions[tipo] = data => data.map(item => ({
-                    ...item
-                }));
-                this.typeLabels[tipo] = tipo;
-                this.displayFunctions[tipo] = config.display || (item => item.label || 'Sem nome');
-            } else {
-                // Se for objeto, contém dados e função de parse
-                this.data[tipo] = config.data;
-                this.displayFunctions[tipo] = config.display || (item =>
-                    item.label || item.username || item.title || item.name || 'Sem nome'
-                );
-                this.prefixes = this.prefixes || {};
-                this.prefixes[tipo] = config.prefix || '';
-
-                // Se os dados são um array, é estático
-                if (Array.isArray(config.data)) {
-                    this.parseFunctions[tipo] = data => data.map(item => ({
-                        ...item
-                    }));
-                } else {
-                    // Se não, usa o parseResponse para dados da URL
-                    this.parseFunctions[tipo] = data => {
-                        const parsed = config.parseResponse ? config.parseResponse(data) : data;
-                        return Array.isArray(parsed) ?
-                            parsed.map(item => ({ ...item })) :
-                            [{ ...parsed }];
-                    };
-                }
-                this.typeLabels[tipo] = config.label || tipo;
-            }
+            this.data[tipo] = config.data;
+            this.displayFunctions[tipo] = config.display;
+            this.prefixes[tipo] = config.prefix || '';
+            this.parseFunctions[tipo] = config.parseResponse;
+            this.typeLabels[tipo] = config.label || tipo;
+            this.styles[tipo] = config.styles || {
+                background: '#e3f2fd',
+                color: '#1565c0',
+                border: '#90caf9'
+            };
         });
-
-        this.styles = options.styles || {};
 
         // Criar container de autocomplete
         this.autocompleteContainer = document.createElement('div');
@@ -72,8 +40,6 @@ class MentionJS {
         this.currentOptions = [];
         this.searchTimeout = null;
         this.currentQuery = '';
-
-        // Cache de dados
         this.dataCache = {};
 
         // Bind dos métodos
@@ -87,10 +53,8 @@ class MentionJS {
         this.navigateOptions = this.navigateOptions.bind(this);
         this.fetchData = this.fetchData.bind(this);
 
-        // Aplicar estilos padrão
+        // Aplicar estilos e adicionar listeners
         this.applyStyles();
-
-        // Adicionar event listeners
         this.addEventListeners();
     }
 
@@ -381,20 +345,21 @@ class MentionJS {
         const url = this.data[tipo];
         const parseFunction = this.parseFunctions[tipo];
 
-        if (typeof url !== 'string') {
-            const dados = Array.isArray(this.data[tipo]) ? this.data[tipo] : [];
-            const dadosNormalizados = parseFunction(dados);
-
-            if (query) {
-                return dadosNormalizados.filter(item =>
-                    this.removeAcentos(item.label?.toLowerCase() || '')
-                        .includes(this.removeAcentos(query.toLowerCase()))
-                );
-            }
-            return dadosNormalizados;
-        }
-
         try {
+            // Se for um array, é dado estático
+            if (Array.isArray(url)) {
+                const dados = parseFunction(url);
+                if (!query) return dados;
+
+                // Filtrar dados baseado na query
+                const queryLower = this.removeAcentos(query.toLowerCase());
+                return dados.filter(item => {
+                    const displayText = this.displayFunctions[tipo](item);
+                    return this.removeAcentos(displayText.toLowerCase()).includes(queryLower);
+                });
+            }
+
+            // Se não for array, é uma URL
             if (this.dataCache[tipo] && !query) {
                 return this.dataCache[tipo];
             }
@@ -407,23 +372,13 @@ class MentionJS {
                 return [];
             }
             const data = await response.json();
+            const normalizedData = parseFunction(data);
 
-            try {
-                const normalizedData = parseFunction(data);
-
-                if (!Array.isArray(normalizedData)) {
-                    return [];
-                }
-
-                if (!query) {
-                    this.dataCache[tipo] = normalizedData;
-                }
-
-                return normalizedData;
-
-            } catch (parseError) {
-                return [];
+            if (!query) {
+                this.dataCache[tipo] = normalizedData;
             }
+
+            return normalizedData;
         } catch (error) {
             return [];
         }

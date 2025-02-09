@@ -4,7 +4,7 @@ Uma biblioteca JavaScript leve e flexível para adicionar funcionalidade de men�
 
 ## Características
 
-- 🚀 Suporte para múltiplos tipos de menções (@usuarios, @produtos, etc.)
+- 🚀 Suporte para múltiplos tipos de menções (Usuário: , Produto: , Venda: )
 - 🎨 Estilos personalizáveis por tipo de menção
 - 🔄 Suporte para dados estáticos e dinâmicos (via API)
 - 🎯 Display personalizado para cada tipo de menção
@@ -28,73 +28,48 @@ const editor = document.getElementById('editor');
 const mention = new MentionJS({
     inputElement: editor,
     data: {
-        // Exemplo com API e display personalizado
+        // Exemplo com API
         usuarios: {
             label: 'Usuários',
             data: 'https://jsonplaceholder.typicode.com/users?username_like=',
-            prefix: 'Usuário: ',
+            prefix: 'Usuario: ',
+            // Obrigatório: função para exibição do item
             display: item => `${item.username} (${item.email})`,
+            // Obrigatório: função para processar resposta da API
             parseResponse: (data) => data.map(user => ({
                 tipo: 'usuario',
                 id: user.id,
                 username: user.username,
                 email: user.email
-            }))
-        },
-        // API com estrutura diferente e display personalizado
-        produtos: {
-            label: 'Produtos',
-            data: 'https://dummyjson.com/products/search?q=',
-            prefix: 'Produto: ',
-            display: item => `${item.title} - ${item.description}`,
-            parseResponse: (data) => {
-                if (!data || !data.products) return [];
-                return data.products.map(product => ({
-                    tipo: 'produto',
-                    id: product.id,
-                    title: product.title,
-                    description: product.description
-                }));
+            })),
+            // Opcional: estilos personalizados
+            styles: {
+                background: '#e3f2fd',
+                color: '#1565c0',
+                border: '#90caf9'
             }
         },
-        // Dados estáticos com display personalizado
+        // Exemplo com dados estáticos
         vendas: {
             label: 'Vendas',
             prefix: 'Venda: ',
-            display: item => `${item.label} - R$ ${item.valor} (${item.data})`,
+            // Obrigatório: função para exibição do item
+            display: item => `${item.label} - R$ ${item.valor}`,
             data: [
-                {
-                    tipo: 'venda',
-                    id: 1,
-                    label: 'Venda 1',
-                    valor: 1000,
-                    data: '2024-03-20'
-                },
-                {
-                    tipo: 'venda',
-                    id: 2,
-                    label: 'Venda 2',
-                    valor: 2000,
-                    data: '2024-03-21'
-                }
-            ]
-        }
-    },
-    styles: {
-        usuarios: {
-            background: '#e3f2fd',
-            color: '#1565c0',
-            border: '#90caf9'
-        },
-        produtos: {
-            background: '#fff9c4',
-            color: '#f57f17',
-            border: '#ffd54f'
-        },
-        vendas: {
-            background: '#fff9c4',
-            color: '#f57f17',
-            border: '#ffd54f'
+                { id: 1, label: 'Venda 1', valor: 1000 },
+                { id: 2, label: 'Venda 2', valor: 2000 }
+            ],
+            // Obrigatório: função para processar os dados
+            parseResponse: (data) => data.map(venda => ({
+                ...venda,
+                tipo: 'venda'
+            })),
+            // Opcional: estilos personalizados
+            styles: {
+                background: '#e8f5e9',
+                color: '#2e7d32',
+                border: '#a5d6a7'
+            }
         }
     }
 });
@@ -139,7 +114,12 @@ function App() {
                             id: user.id,
                             username: user.username,
                             email: user.email
-                        }))
+                        })),
+                        styles: {
+                            background: '#e3f2fd',
+                            color: '#1565c0',
+                            border: '#90caf9'
+                        }
                     },
                     produtos: {
                         label: 'Produtos',
@@ -154,6 +134,11 @@ function App() {
                                 title: product.title,
                                 description: product.description
                             }));
+                        },
+                        styles: {
+                            background: '#fff9c4',
+                            color: '#f57f17',
+                            border: '#ffd54f'
                         }
                     },
                     vendas: {
@@ -175,7 +160,12 @@ function App() {
                                 valor: 2000,
                                 data: '2024-03-21'
                             }
-                        ]
+                        ],
+                        styles: {
+                            background: '#fff9c4',
+                            color: '#f57f17',
+                            border: '#ffd54f'
+                        }
                     }
                 },
                 styles: {
@@ -227,7 +217,7 @@ function App() {
     return (
         <div className="App">
             <h1>MentionJS - Exemplo React</h1>
-            <p>Digite @ para mencionar usuários, produtos ou vendas</p>
+            <p>Digite @ e escolha o tipo de menção (usuários, produtos ou vendas)</p>
 
             <div ref={editorRef} className="editor" contentEditable></div>
 
@@ -269,41 +259,60 @@ npm start
 
 - `inputElement`: Elemento HTML onde as menções serão habilitadas
 - `data`: Objeto com configuração dos tipos de menção. Cada tipo deve ser um objeto com:
-  - `label`: Nome amigável do tipo que será exibido no menu de seleção
+  - `label`: Nome amigável do tipo que será exibido no menu de seleção (opcional, usa o tipo se não fornecido)
   - `data`: URL para busca ou array de dados estáticos
-  - `display`: Função que define como o item será exibido no menu de seleção
-  - `prefix`: Prefixo opcional que será adicionado antes do texto do display (ex: "Usuário: ")
-  - `parseResponse`: Função de transformação dos dados da API (apenas para URLs)
-- `styles`: Objeto com estilos personalizados por tipo
+  - `display`: (Obrigatório) Função que define como o item será exibido no menu de seleção
+  - `prefix`: Prefixo opcional que será adicionado antes do texto do display (ex: "Usuario: ", "Produto: ", "Venda: ")
+  - `parseResponse`: (Obrigatório) Função de transformação dos dados
+  - `styles`: (Opcional) Objeto com estilos personalizados para o tipo:
+    - `background`: Cor de fundo
+    - `color`: Cor do texto
+    - `border`: Cor da borda
 
 ### Configuração de Dados
 
 Cada tipo de menção deve ser configurado como um objeto com as seguintes propriedades:
 
-1. Configuração básica com dados estáticos:
+1. Configuração com dados estáticos:
 ```javascript
 vendas: {
-    label: 'Vendas',
-    display: item => `${item.label} - R$ ${item.valor}`,
+    label: 'Vendas', // opcional
+    prefix: 'Venda: ', // opcional
+    display: item => `${item.label} - R$ ${item.valor}`, // obrigatório
     data: [
         { id: 1, label: 'Venda 1', valor: 1000 },
         { id: 2, label: 'Venda 2', valor: 2000 }
-    ]
+    ],
+    parseResponse: (data) => data.map(venda => ({ // obrigatório
+        ...venda,
+        tipo: 'venda'
+    })),
+    styles: { // opcional
+        background: '#e8f5e9',
+        color: '#2e7d32',
+        border: '#a5d6a7'
+    }
 }
 ```
 
 2. Configuração com API:
 ```javascript
 usuarios: {
-    label: 'Usuários',
+    label: 'Usuários', // opcional
+    prefix: 'Usuario: ', // opcional
     data: 'https://api.exemplo.com/usuarios?q=',
-    display: item => `${item.nome} (${item.email})`,
-    parseResponse: (data) => data.map(user => ({
-        type: 'usuario',
+    display: item => `${item.nome} (${item.email})`, // obrigatório
+    parseResponse: (data) => data.map(user => ({ // obrigatório
+        tipo: 'usuario',
         id: user.id,
         nome: user.nome,
         email: user.email
-    }))
+    })),
+    styles: { // opcional
+        background: '#e3f2fd',
+        color: '#1565c0',
+        border: '#90caf9'
+    }
 }
 ```
 
